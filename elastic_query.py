@@ -1,9 +1,6 @@
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, A, Q
 
-import pandas as pd
-from datetime import datetime
-import matplotlib.pyplot as plt
 
 ## TODO : print 여부 파라미터 추가
 ## TODO : size 추가 여부 확인할 것 (속도에 따라)
