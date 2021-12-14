@@ -24,7 +24,8 @@ class toktok_elastic(object):
         self.password = password
         self.es = Elasticsearch([{'host' : hostname, 'port' : port}], http_auth = (id, password), timeout=30)
 
-    def comm_index_per_class(self, start_date, end_date, date_interval='week', normalize_method='rescale_0_1'):
+    def comm_index_per_class(self, start_date, end_date, date_interval='week', normalize_method='rescale_0_1',
+                             print_query=False, commit_query=False):
         self.index = comm_index
         s = Search(using=self.es, index=self.index)
         ## filtering data
@@ -44,13 +45,20 @@ class toktok_elastic(object):
                                                                    'reply': 'minmax_reply',
                                                                    'good': 'minmax_good'},
                       script={'source': 'params.comment + params.reply + params.good'})
-        print(s.to_dict())
-        ## commit query
-        response = s.execute()
-        print(f'{response.took} (ms) 소요')
-        return response.aggregations.to_dict()
 
-    def comm_index_per_student(self, cmmnty_id, start_date, end_date, date_interval='week', normalize_method='rescale_0_1'):
+        if print_query:
+            print(s.to_dict())
+
+        ## commit query
+        if commit_query:
+            response = s.execute()
+            print(f'{response.took} (ms) 소요')
+            return response.aggregations.to_dict()
+
+        return s.to_dict()
+
+    def comm_index_per_student(self, cmmnty_id, start_date, end_date, date_interval='week', normalize_method='rescale_0_1',
+                               print_query=False, commit_query=False):
         self.index = comm_index
         s = Search(using=self.es, index=self.index)
         ## filtering data
@@ -71,13 +79,20 @@ class toktok_elastic(object):
                                                                    'reply': 'minmax_reply',
                                                                    'good': 'minmax_good'},
                       script={'source': 'params.comment + params.reply + params.good'})
-        print(s.to_dict())
-        ## commit query
-        response = s.execute()
-        print(f'{response.took} (ms) 소요')
-        return response.aggregations.to_dict()
 
-    def submit_rate_by_student(self, cmmnty_id, student_id, start_date, end_date):
+        if print_query:
+            print(s.to_dict())
+
+        ## commit query
+        if commit_query:
+            response = s.execute()
+            print(f'{response.took} (ms) 소요')
+            return response.aggregations.to_dict()
+
+        return s.to_dict()
+
+    def submit_rate_by_student(self, cmmnty_id, student_id, start_date, end_date, extract_list=False,
+                               print_query=False, commit_query=False):
         self.submit_index = submit_index
         self.assign_index = assign_index
 
@@ -91,11 +106,15 @@ class toktok_elastic(object):
         ## aggregating data
         s.aggs.metric('submit_per_student', 'terms', field='last_updusr_id') \
             .metric('submit_count', 'value_count', field='ntt_no')
-        print(s.to_dict())
-        ## commit query
-        submit_res = s.execute()
-        print(f'{submit_res.took} (ms) 소요')
-        submit_count = submit_res.aggregations.submit_count['value']
+        submit_query = s.to_dict()
+
+        if print_query:
+            print(s.to_dict())
+        if commit_query:
+            submit_res = s.execute()
+            print(f'{submit_res.took} (ms) 소요')
+            submit_count = submit_res.aggregations.submit_count['value']
+
 
         # calculate assign count
         s = Search(using=self.es, index=self.assign_index)
@@ -106,19 +125,23 @@ class toktok_elastic(object):
         ## aggregating data
         s.aggs.metric('assign_per_class', 'terms', field='cmmnty_id') \
             .metric('assign_count', 'value_count', field='ntt_no')
-        print(s.to_dict())
+        assign_query = s.to_dict()
+
+        if print_query:
+            print(s.to_dict())
 
         ## commit query
-        assign_res = s.execute()
-        print(f'{assign_res.took} (ms) 소요')
-        assign_count = assign_res.aggregations.assign_count['value']
+        if commit_query:
+            assign_res = s.execute()
+            print(f'{assign_res.took} (ms) 소요')
+            assign_count = assign_res.aggregations.assign_count['value']
+            return submit_count / assign_count
 
         # assign list 추출
-        self.assign_list = []
-        for hit in assign_res.hits:
-            self.assign_list.append(hit.to_dict())
-
-        def print_assign_list(self):
+        if extract_list:
+            self.assign_list = []
+            for hit in assign_res.hits:
+                self.assign_list.append(hit.to_dict())
             return self.assign_list
 
-        return submit_count / assign_count
+        return submit_query, assign_query
