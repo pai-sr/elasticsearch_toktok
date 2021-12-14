@@ -68,7 +68,7 @@ class toktok_elastic(object):
         ## aggregating data
         s.aggs.bucket('comm_over_date', 'date_histogram',
                       field='post_frst_register_pnttm', interval=date_interval) \
-            .bucket('comm_per_student', 'terms', field='post_frst_register_id.keyword') \
+            .bucket('comm_per_student', 'terms', field='post_frst_register_id') \
             .metric('comment', 'value_count', field='comment_frst_register_pnttm') \
             .pipeline('minmax_comment', 'normalize', buckets_path='comment', method=normalize_method, format='00.00%') \
             .metric('reply', 'value_count', field='reply_frst_register_pnttm') \
